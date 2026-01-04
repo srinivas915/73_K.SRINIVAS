@@ -9,3 +9,6 @@ faiss-cpu
 pandas
 numpy
 python-dotenv
+fastapi
+uvicorn
+jinja2

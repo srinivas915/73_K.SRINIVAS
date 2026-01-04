@@ -1,35 +1,49 @@
 import pandas as pd
-import re
 import os
+import re
+
+RAW_DIR = "data/raw"
+OUT_PATH = "data/processed/cleaned_data.csv"
 
 def clean_text(text):
-    if pd.isna(text):
-        return ""
-    text = text.lower()
+    text = str(text).lower()
     text = re.sub(r"http\S+", "", text)
     text = re.sub(r"[^a-zA-Z0-9\s]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
+def process_telecom():
+    df = pd.read_csv(f"{RAW_DIR}/telecom_customer_interactions.csv")
+
+    df["text"] = df["CustomerInteractionRawText"].apply(clean_text)
+    df["source"] = "telecom_call"
+
+    return df[["text", "source"]]
+
+def process_tickets():
+    df = pd.read_csv(f"{RAW_DIR}/customer_support_tickets.csv")
+
+    df["text"] = (
+        "product: " + df["Product Purchased"].fillna("") + " | " +
+        "type: " + df["Ticket Type"].fillna("") + " | " +
+        "subject: " + df["Ticket Subject"].fillna("") + " | " +
+        "issue: " + df["Ticket Description"].fillna("") + " | " +
+        "resolution: " + df["Resolution"].fillna("")
+    )
+
+    df["text"] = df["text"].apply(clean_text)
+    df["source"] = "support_ticket"
+
+    return df[["text", "source"]]
+
 def main():
-    input_path = "data/raw/telecom_customer_interactions.csv"
-    output_dir = "data/processed"
-    output_path = os.path.join(output_dir, "cleaned_data.csv")
+    telecom_df = process_telecom()
+    ticket_df = process_tickets()
 
-    os.makedirs(output_dir, exist_ok=True)
+    combined = pd.concat([telecom_df, ticket_df], ignore_index=True)
+    combined.to_csv(OUT_PATH, index=False)
 
-    df = pd.read_csv(input_path)
-
-    # ✅ CORRECT COLUMN NAME
-    TEXT_COLUMN = "CustomerInteractionRawText"
-
-    df["clean_text"] = df[TEXT_COLUMN].astype(str).apply(clean_text)
-
-    # remove empty rows
-    df = df[df["clean_text"].str.len() > 10]
-
-    df.to_csv(output_path, index=False)
-    print("✅ cleaned_data.csv generated successfully")
+    print("✅ cleaned_data.csv generated using BOTH datasets")
 
 if __name__ == "__main__":
     main()
